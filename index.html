@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Scanner Widget</title>
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  <style>
+    body { margin: 0; padding: 0; background: #000; display: flex; justify-content: center; align-items: center; height: 100vh; }
+    #reader { width: 100%; max-width: 500px; }
+  </style>
+</head>
+<body>
+  <div id="reader"></div>
+  <script>
+    const html5QrCode = new Html5Qrcode("reader");
+    html5QrCode.start(
+      { facingMode: "environment" },
+      { fps: 15, qrbox: { width: 280, height: 160 } },
+      (decodedText) => {
+        window.parent.postMessage({ type: 'BARCODE_SCANNED', code: decodedText }, '*');
+      },
+      (errorMessage) => {}
+    ).catch(err => {
+      window.parent.postMessage({ type: 'SCANNER_ERROR', error: err }, '*');
+    });
+  </script>
+</body>
+</html>
