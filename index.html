@@ -3,27 +3,98 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Scanner Widget</title>
+  <title>Camera Scanner Widget</title>
   <script src="https://unpkg.com/html5-qrcode"></script>
   <style>
-    body { margin: 0; padding: 0; background: #000; display: flex; justify-content: center; align-items: center; height: 100vh; }
-    #reader { width: 100%; max-width: 500px; }
+    body {
+      margin: 0;
+      padding: 0;
+      background: #0f172a;
+      color: #fff;
+      font-family: sans-serif;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    #reader {
+      width: 100%;
+      max-width: 480px;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .btn-start {
+      background: #2563eb;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      font-size: 16px;
+      font-weight: bold;
+      border-radius: 8px;
+      cursor: pointer;
+      margin-bottom: 10px;
+    }
+    #statusText {
+      font-size: 13px;
+      color: #94a3b8;
+      margin-top: 8px;
+    }
   </style>
 </head>
 <body>
+
+  <button id="btnStart" class="btn-start" onclick="initCamera()">📷 Cho Phép & Bật Camera</button>
   <div id="reader"></div>
+  <div id="statusText">Đang chờ khởi động camera...</div>
+
   <script>
-    const html5QrCode = new Html5Qrcode("reader");
-    html5QrCode.start(
-      { facingMode: "environment" },
-      { fps: 15, qrbox: { width: 280, height: 160 } },
-      (decodedText) => {
-        window.parent.postMessage({ type: 'BARCODE_SCANNED', code: decodedText }, '*');
-      },
-      (errorMessage) => {}
-    ).catch(err => {
-      window.parent.postMessage({ type: 'SCANNER_ERROR', error: err }, '*');
-    });
+    let html5QrCode = null;
+
+    function initCamera() {
+      document.getElementById('btnStart').style.display = 'none';
+      document.getElementById('statusText').innerText = "Đang kết nối Camera...";
+
+      html5QrCode = new Html5Qrcode("reader");
+
+      // Tự động tìm danh sách camera trên thiết bị
+      Html5Qrcode.getCameras().then(devices => {
+        if (devices && devices.length) {
+          // Ưu tiên chọn Camera sau (environment camera)
+          let backCamera = devices.find(d => d.label.toLowerCase().includes('back') || d.label.toLowerCase().includes('rear')) || devices[devices.length - 1];
+          let cameraId = backCamera ? backCamera.id : devices[0].id;
+
+          html5QrCode.start(
+            cameraId,
+            { fps: 15, qrbox: { width: 260, height: 160 } },
+            (decodedText) => {
+              // Bắn tín hiệu mã vạch về trang Apps Script chính
+              window.parent.postMessage({ type: 'BARCODE_SCANNED', code: decodedText }, '*');
+            },
+            (errorMessage) => {}
+          ).then(() => {
+            document.getElementById('statusText').innerText = "Hướng camera vào mã vạch...";
+          }).catch(err => {
+            showError("Không thể bật camera: " + err);
+          });
+        } else {
+          showError("Không tìm thấy camera trên thiết bị.");
+        }
+      }).catch(err => {
+        showError("Lỗi truy cập camera: " + err);
+      });
+    }
+
+    function showError(msg) {
+      document.getElementById('statusText').innerText = msg;
+      document.getElementById('btnStart').style.display = 'inline-block';
+      window.parent.postMessage({ type: 'SCANNER_ERROR', error: msg }, '*');
+    }
+
+    // Tự động thử bật camera ngay khi vừa mở
+    window.onload = function() {
+      setTimeout(initCamera, 500);
+    };
   </script>
 </body>
 </html>
