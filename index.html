@@ -1,104 +1,602 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Camera Scanner Widget</title>
-  <!-- Dùng CDN HTML5-QRCode bản mới nhất -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
-  <style>
-    body {
-      margin: 0;
-      padding: 0;
-      background: #0f172a;
-      color: #fff;
-      font-family: sans-serif;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      overflow: hidden;
-    }
-    #reader {
-      width: 100%;
-      max-width: 480px;
-      border-radius: 12px;
-      overflow: hidden;
-    }
-    #statusText {
-      font-size: 14px;
-      color: #38bdf8;
-      margin-top: 12px;
-      font-weight: bold;
-      text-align: center;
-      padding: 0 10px;
-    }
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Xuất kho barcode</title>
+<style>
+:root{
+  --paper:#eef1ef; --card:#ffffff; --ink:#14222b; --muted:#5d6b73; --line:#d3dad7;
+  --ok:#17794e; --ok-bg:#dff3e8; --err:#b9302a; --err-bg:#f9e0de; --warn:#9a6a00; --warn-bg:#fbefcf;
+  --brand:#14222b; --accent:#0f6c7a;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{font-family:var(--sans);background:var(--paper);color:var(--ink);font-size:15px;line-height:1.45}
+button{font:inherit;cursor:pointer;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:9px 14px;border-radius:6px}
+button:hover:not(:disabled){border-color:var(--ink)}
+button:disabled{opacity:.45;cursor:not-allowed}
+button:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+button.primary{background:var(--brand);color:#fff;border-color:var(--brand)}
+button.danger{background:var(--err);color:#fff;border-color:var(--err)}
+button.small{padding:5px 10px;font-size:13px}
+input{font:inherit;padding:10px 12px;border:1px solid var(--line);border-radius:6px;background:#fff;color:var(--ink);width:100%}
+label{display:block;margin:10px 0 4px;font-weight:600;font-size:14px}
+
+.top{display:flex;align-items:center;gap:14px;padding:10px 18px;background:var(--brand);color:#fff;flex-wrap:wrap}
+.top .brand{font-weight:700;font-size:17px;margin-right:auto}
+.top .who{font-size:14px}
+.top .who .role{opacity:.7;margin-left:8px}
+.top button{background:transparent;color:#fff;border-color:#ffffff55;padding:5px 11px;font-size:13px}
+.net{width:10px;height:10px;border-radius:50%;background:#7b8a90;display:inline-block}
+.net.on{background:#4cd18b}.net.off{background:#ff6b61}
+main{max-width:1060px;margin:0 auto;padding:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:16px}
+.login{max-width:380px;margin:60px auto}
+.login h1{font-size:20px;margin:0 0 4px}
+.login p{margin:0 0 12px;color:var(--muted)}
+.err-text{color:var(--err);margin-top:8px;min-height:1.2em}
+
+.sessionbar{display:flex;gap:14px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.sessionbar .ct{font-weight:700;font-size:18px;font-family:var(--mono)}
+.sessionbar .timer{color:var(--muted);font-variant-numeric:tabular-nums}
+.sessionbar .actions{display:flex;gap:8px;flex-wrap:wrap}
+.scanrow{display:flex;gap:8px;margin-top:14px}
+.scanrow input{font-family:var(--mono);font-size:18px;padding:13px 14px}
+
+.last{margin-top:14px;border-radius:8px;border:2px solid var(--line);background:var(--card);padding:16px;transition:background .15s,border-color .15s}
+.last.ok{background:var(--ok-bg);border-color:var(--ok)}
+.last.err{background:var(--err-bg);border-color:var(--err)}
+.last.warn{background:var(--warn-bg);border-color:var(--warn)}
+.last .title{font-weight:700;font-size:15px}
+.last.ok .title{color:var(--ok)}.last.err .title{color:var(--err)}.last.warn .title{color:var(--warn)}
+.last .bc{font-family:var(--mono);font-size:clamp(20px,4.2vw,34px);font-weight:600;margin:6px 0 10px;word-break:break-all;letter-spacing:.02em}
+.last .bc .pf{opacity:.62}
+.last .info{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.last .info div span{display:block;font-size:13px;color:var(--muted)}
+.last .info div b{font-size:17px;font-family:var(--mono)}
+.last .info div b.txt{font-family:var(--sans)}
+#declBox{margin-top:10px}
+
+.listhead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:18px 0 8px;flex-wrap:wrap}
+.listhead h2{font-size:16px;margin:0}
+.tablewrap{overflow-x:auto;background:var(--card);border:1px solid var(--line);border-radius:8px}
+table{width:100%;border-collapse:collapse;min-width:640px}
+th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font-size:13px;color:var(--muted);font-weight:600;background:#f6f8f7}
+td.mono{font-family:var(--mono)}
+td.pf{opacity:.65}
+tr:last-child td{border-bottom:0}
+.empty{padding:26px;text-align:center;color:var(--muted)}
+
+dialog{border:0;border-radius:10px;padding:20px;max-width:440px;width:calc(100% - 28px);box-shadow:0 12px 40px #0004;color:var(--ink)}
+dialog::backdrop{background:#14222b99}
+dialog h3{margin:0 0 6px;font-size:17px}
+dialog .row{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
+.split{font-family:var(--mono);font-size:20px;font-weight:600;word-break:break-all;padding:10px;background:var(--paper);border-radius:6px}
+.split .pf{background:#ffd88a;border-radius:3px}
+.split .sr{opacity:.8}
+#camBox{width:100%;min-height:220px;background:#000;border-radius:6px;overflow:hidden}
+.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 16px;border-radius:8px;max-width:90vw;z-index:50;opacity:0;pointer-events:none;transition:opacity .2s}
+.toast.show{opacity:1}
+[hidden]{display:none!important}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
 </head>
 <body>
 
-  <div id="reader"></div>
-  <div id="statusText">Đang khởi tạo camera...</div>
+<header class="top">
+  <div class="brand">Xuất kho barcode</div>
+  <div class="who" id="who" hidden><span id="whoName"></span><span class="role" id="whoRole"></span></div>
+  <span class="net" id="net" title="Trạng thái kết nối"></span>
+  <button id="btnSettings">Cài đặt</button>
+  <button id="btnLogout" hidden>Đăng xuất</button>
+</header>
 
-  <script>
-    let html5QrCode = null;
+<main>
+  <!-- Đăng nhập -->
+  <section id="vLogin" class="card login">
+    <h1>Đăng nhập</h1>
+    <p>Nhập mã nhân viên hoặc mã thiết bị.</p>
+    <label for="loginMa">Mã nhân viên</label>
+    <input id="loginMa" autocomplete="off" placeholder="VD: NV01">
+    <button id="btnLogin" class="primary" style="width:100%;margin-top:14px">Vào hệ thống</button>
+    <div class="err-text" id="loginErr"></div>
+    <p id="demoHint" hidden>Đang chạy chế độ thử (chưa nối Google Sheets). Tài khoản thử: NV01 (Quản lý), NV02 (Kho), NV03 (Chứng từ).</p>
+  </section>
 
-    function initCamera() {
-      html5QrCode = new Html5Qrcode("reader");
+  <!-- Ứng dụng -->
+  <section id="vApp" hidden>
+    <div class="card sessionbar">
+      <div>
+        <div class="ct" id="ct">Chưa có phiên làm việc</div>
+        <div class="timer" id="timer">Thời gian: 00:00:00</div>
+      </div>
+      <div class="actions">
+        <button id="btnStart" class="primary">▶ Bắt Đầu Phiên Mới</button>
+        <button id="btnEnd" class="danger">⏹ Kết Thúc Phiên</button>
+      </div>
+    </div>
 
-      // Khai báo rõ các chuẩn Barcode 1D thông dụng nhất trong kho vận (Code 128, Code 39, EAN, UPC)
-      const config = {
-        fps: 30, // Tăng tốc độ đọc khung hình lên tối đa
-        qrbox: { width: 320, height: 130 }, // Khung chữ nhật hẹp theo chiều ngang cho tem mã vạch
-        formatsToSupport: [
-          Html5QrcodeSupportedFormats.CODE_128,
-          Html5QrcodeSupportedFormats.CODE_39,
-          Html5QrcodeSupportedFormats.EAN_13,
-          Html5QrcodeSupportedFormats.EAN_8,
-          Html5QrcodeSupportedFormats.UPC_A,
-          Html5QrcodeSupportedFormats.UPC_E,
-          Html5QrcodeSupportedFormats.QR_CODE
-        ],
-        experimentalFeatures: {
-          useBarCodeDetectorIfSupported: true // Tận dụng bộ giải mã phần cứng Android/iOS
-        }
-      };
+    <form id="scanForm" class="scanrow" autocomplete="off">
+      <input id="scanInput" placeholder="Bắn barcode vào đây rồi nhấn Enter" aria-label="Ô nhập barcode" autocomplete="off" autocapitalize="off" spellcheck="false">
+      <button type="button" id="btnCam">📷 Camera</button>
+    </form>
 
-      // Yêu cầu Camera độ phân giải sắc nét
-      const cameraConstraints = {
-        facingMode: "environment",
-        width: { min: 1280, ideal: 1920 },
-        height: { min: 720, ideal: 1080 }
-      };
+    <div class="last" id="last">
+      <div class="title" id="lastTitle">Bấm “Bắt Đầu Phiên Mới” để bắt đầu quét</div>
+      <div class="bc" id="lastBc"></div>
+      <div class="info">
+        <div><span>Mã hàng</span><b id="lastMa">—</b></div>
+        <div><span>Tên hàng</span><b class="txt" id="lastTen">—</b></div>
+        <div><span>Seri</span><b id="lastSeri">—</b></div>
+      </div>
+      <div id="declBox" hidden><button id="btnDecl" class="primary">Khai Báo Ngay</button></div>
+    </div>
 
-      html5QrCode.start(
-        cameraConstraints,
-        config,
-        (decodedText) => {
-          document.getElementById('statusText').innerText = "✅ ĐÃ ĐỌC MÃ: " + decodedText;
+    <div class="listhead">
+      <h2>Danh sách đã quét: <span id="count">0</span> mã</h2>
+      <button id="btnCopyAll">📋 Copy Tất Cả Seri Cho ERP</button>
+    </div>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>STT</th><th>Giờ</th><th>Barcode</th><th>MaPrefix</th><th>Mã hàng</th><th>Tên hàng</th><th>Seri</th><th></th></tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+      <div class="empty" id="emptyMsg">Chưa có mã nào trong phiên.</div>
+    </div>
+  </section>
+</main>
 
-          // Gửi dữ liệu về ứng dụng chính Apps Script
-          if (window.opener) {
-            window.opener.postMessage({ type: 'BARCODE_SCANNED', code: decodedText }, '*');
-          }
-          if (window.parent) {
-            window.parent.postMessage({ type: 'BARCODE_SCANNED', code: decodedText }, '*');
-          }
-        },
-        (errorMessage) => {
-          // Đang rà soát mã vạch...
-        }
-      ).then(() => {
-        document.getElementById('statusText').innerText = "🔍 Đưa mã vạch vào khung hình...";
-      }).catch(err => {
-        document.getElementById('statusText').innerText = "❌ Lỗi mở camera: " + err;
-      });
-    }
+<!-- Cài đặt -->
+<dialog id="dlgSet">
+  <h3>Cài đặt kết nối</h3>
+  <label for="setUrl">URL Google Apps Script (/exec)</label>
+  <input id="setUrl" placeholder="https://script.google.com/macros/s/.../exec">
+  <label for="setKey">API key (nếu có đặt trong Code.gs)</label>
+  <input id="setKey" autocomplete="off">
+  <div class="row"><button id="setCancel">Đóng</button><button id="setSave" class="primary">Lưu</button></div>
+</dialog>
 
-    window.onload = function() {
-      setTimeout(initCamera, 300);
-    };
-  </script>
+<!-- Khai báo mã mới -->
+<dialog id="dlgDecl">
+  <h3>Khai báo mã hàng mới</h3>
+  <div class="split" id="declPreview"></div>
+  <label for="declRange">Số ký tự thuộc MaPrefix: <span id="declLen"></span></label>
+  <input type="range" id="declRange">
+  <label for="declMa">MaHang</label><input id="declMa" autocomplete="off">
+  <label for="declTen">TenHang</label><input id="declTen" autocomplete="off">
+  <label for="declDvt">DonViTinh</label><input id="declDvt" value="Cái" autocomplete="off">
+  <div class="err-text" id="declErr"></div>
+  <div class="row"><button id="declCancel">Huỷ</button><button id="declSave" class="primary">Lưu vào danh mục</button></div>
+</dialog>
+
+<!-- Quản lý duyệt -->
+<dialog id="dlgApprove">
+  <h3>Cần Quản lý duyệt</h3>
+  <p style="margin:0;color:var(--muted)">Quản lý nhập mã nhân viên của mình để kết thúc phiên.</p>
+  <label for="apMa">Mã Quản lý</label>
+  <input id="apMa" autocomplete="off">
+  <div class="err-text" id="apErr"></div>
+  <div class="row"><button id="apCancel">Huỷ</button><button id="apOk" class="primary">Duyệt và kết thúc</button></div>
+</dialog>
+
+<!-- Camera -->
+<dialog id="dlgCam">
+  <h3>Quét bằng camera</h3>
+  <div id="camBox"></div>
+  <div class="row"><button id="camClose">Đóng camera</button></div>
+</dialog>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+/* =====================================================================
+   HỆ THỐNG QUẢN LÝ XUẤT HÀNG BARCODE - theo "Tài liệu quy ước"
+   ===================================================================== */
+const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbw-U9OtnQB7QFxkjWEd9NcglpXnlCKPU7jO6xY5mBlWwhPgOmioSn5Q9Bx_NTtxgLig/exec';   // dán URL Apps Script /exec vào đây (hoặc dùng nút Cài đặt)
+
+const $ = s => document.querySelector(s);
+const LS = {
+  get(k, d){ try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; }catch(e){ return d; } },
+  set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} },
+  del(k){ try{ localStorage.removeItem(k); }catch(e){} }
+};
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pad = n => (n < 10 ? '0' : '') + n;
+const fmt = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+const ROLE = { QuanLy:'Quản lý', NhanVienKho:'Nhân viên kho', NhanVienChungTu:'Nhân viên chứng từ' };
+
+let cfg = LS.get('bq_cfg', { url: DEFAULT_API_URL, key: '' });
+if (!cfg.url && DEFAULT_API_URL) cfg.url = DEFAULT_API_URL;
+const state = { user: null, catalog: [], session: null, pendingBc: null };
+let busy = false;
+
+/* ---------------------------- Âm thanh / thông báo ---------------------------- */
+let ac;
+function beep(kind){
+  try{
+    ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+    if (ac.state === 'suspended') ac.resume();
+    const seq = kind === 'ok' ? [[1000,.07]] : kind === 'warn' ? [[520,.16],[520,.16]] : [[220,.25],[220,.25],[220,.25]];
+    let t = ac.currentTime;
+    seq.forEach(([f,d]) => {
+      const o = ac.createOscillator(), g = ac.createGain();
+      o.type = kind === 'ok' ? 'sine' : 'square'; o.frequency.value = f; g.gain.value = .25;
+      o.connect(g); g.connect(ac.destination); o.start(t); o.stop(t + d); t += d + .07;
+    });
+    if (navigator.vibrate) navigator.vibrate(kind === 'ok' ? 30 : [200,80,200]);
+  }catch(e){}
+}
+let toastT;
+function toast(msg){
+  const t = $('#toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 3500);
+}
+function setNet(v){ const n = $('#net'); n.className = 'net' + (v === true ? ' on' : v === false ? ' off' : ''); n.title = v === true ? 'Đã kết nối Google Sheets' : v === false ? 'Mất kết nối (dữ liệu vẫn được lưu trên máy)' : 'Chế độ thử (chưa kết nối Google Sheets)'; }
+
+/* ---------------------------- Gọi API ---------------------------- */
+async function api(action, data = {}){
+  if (!cfg.url){ setNet(null); return localApi(action, data); }
+  try{
+    const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 20000);
+    const res = await fetch(cfg.url, {
+      method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(Object.assign({ action, key: cfg.key }, data)), signal: ctl.signal
+    });
+    clearTimeout(t);
+    const j = await res.json(); setNet(true); return j;
+  }catch(e){ setNet(false); return { ok:false, network:true, error:'Không kết nối được máy chủ' }; }
+}
+
+/* Chế độ thử khi chưa có URL Apps Script */
+const DEMO_ACC = [
+  { MaNhanVien:'NV01', TenNhanVien:'Quản lý (thử)', VaiTro:'QuanLy', TrangThai:'HoatDong' },
+  { MaNhanVien:'NV02', TenNhanVien:'Nhân viên kho (thử)', VaiTro:'NhanVienKho', TrangThai:'HoatDong' },
+  { MaNhanVien:'NV03', TenNhanVien:'Nhân viên chứng từ (thử)', VaiTro:'NhanVienChungTu', TrangThai:'HoatDong' }
+];
+const DEMO_CAT = [{ MaPrefix:'007EL43A6', MaHang:'AAA', TenHang:'Áo sơ mi nam L', DonViTinh:'Cái' }];
+async function localApi(a, d){
+  const cat = () => LS.get('bq_demo_cat', DEMO_CAT);
+  const find = ma => DEMO_ACC.find(x => x.MaNhanVien.toUpperCase() === String(ma||'').trim().toUpperCase());
+  switch(a){
+    case 'login': { const u = find(d.ma); return u ? { ok:true, user:u, catalog:cat() } : { ok:false, error:'Tài khoản không tồn tại (thử: NV01, NV02, NV03)' }; }
+    case 'getCatalog': return { ok:true, catalog:cat() };
+    case 'addPrefix': { const c = cat(); c.push({ MaPrefix:d.prefix, MaHang:d.maHang, TenHang:d.tenHang, DonViTinh:d.donViTinh }); LS.set('bq_demo_cat', c); return { ok:true }; }
+    case 'startSession': { const day = fmt(new Date()).slice(0,10).replace(/-/g,''); const k = 'bq_demo_seq_'+day; const n = (LS.get(k,0)||0)+1; LS.set(k,n); return { ok:true, chungTu:'PX'+day+'-'+pad(n) }; }
+    case 'claim': return { ok:true };
+    case 'verifyManager': { const u = find(d.ma); return u && u.VaiTro === 'QuanLy' ? { ok:true, name:u.TenNhanVien } : { ok:false, error:'Mã này không phải Quản lý' }; }
+    case 'closeSession': return { ok:true, written:(d.rows||[]).length };
+  }
+  return { ok:false, error:'Không hỗ trợ' };
+}
+
+/* ---------------------------- Đăng nhập ---------------------------- */
+async function doLogin(ma){
+  ma = String(ma || '').trim();
+  if (!ma){ $('#loginErr').textContent = 'Hãy nhập mã nhân viên.'; return; }
+  $('#btnLogin').disabled = true; $('#loginErr').textContent = '';
+  const r = await api('login', { ma });
+  $('#btnLogin').disabled = false;
+  if (r.ok){
+    state.user = r.user; state.catalog = r.catalog || [];
+    LS.set('bq_user', r.user); LS.set('bq_catalog', state.catalog);
+    enterApp();
+  } else if (r.network){
+    const cu = LS.get('bq_user');   // mất mạng: cho vào lại bằng tài khoản đã đăng nhập trước đó
+    if (cu && cu.MaNhanVien.toUpperCase() === ma.toUpperCase()){
+      state.user = cu; state.catalog = LS.get('bq_catalog', []); enterApp();
+      toast('Đang offline: dùng danh mục đã lưu trên máy.');
+    } else $('#loginErr').textContent = r.error;
+  } else $('#loginErr').textContent = r.error || 'Đăng nhập thất bại';
+}
+function enterApp(){
+  $('#vLogin').hidden = true; $('#vApp').hidden = false;
+  $('#who').hidden = false; $('#btnLogout').hidden = false;
+  $('#whoName').textContent = state.user.TenNhanVien + ' (' + state.user.MaNhanVien + ')';
+  $('#whoRole').textContent = ROLE[state.user.VaiTro] || state.user.VaiTro;
+  // Khôi phục phiên dở dang (Crash Recovery)
+  const saved = LS.get('bq_session');
+  if (saved && !state.session){
+    state.session = saved;
+    toast(`Đã khôi phục phiên ${saved.chungTu} (${saved.rows.length} mã).`);
+    showLast('warn', 'Đã khôi phục phiên quét dở dang', '', null);
+  }
+  render(); focusScan();
+  api('getCatalog').then(r => { if (r.ok){ state.catalog = r.catalog; LS.set('bq_catalog', r.catalog); } });
+}
+function logout(){
+  if (state.session && !confirm('Phiên đang mở. Đăng xuất sẽ giữ phiên trên máy để khôi phục lần sau. Tiếp tục?')) return;
+  LS.del('bq_user'); state.user = null; state.session = null;
+  $('#vApp').hidden = true; $('#vLogin').hidden = false; $('#who').hidden = true; $('#btnLogout').hidden = true;
+  $('#loginMa').value = ''; $('#loginMa').focus();
+}
+
+/* ---------------------------- Phiên làm việc ---------------------------- */
+function persist(){ if (state.session) LS.set('bq_session', state.session); else LS.del('bq_session'); }
+
+async function startSession(){
+  if (state.session || busy) return;          // khoá cứng: đang có phiên thì không bắt đầu lại
+  busy = true; render();
+  const r = await api('startSession', { ma: state.user.MaNhanVien });
+  let ct, note = '';
+  if (r.ok) ct = r.chungTu;
+  else if (r.network){ const n = new Date(); ct = 'PX' + fmt(n).slice(0,10).replace(/-/g,'') + '-L' + pad(n.getHours()) + pad(n.getMinutes()) + pad(n.getSeconds()); note = 'Offline: mã chứng từ tạm.'; }
+  else { busy = false; render(); toast(r.error || 'Không bắt đầu được phiên'); return; }
+  state.session = { chungTu: ct, start: Date.now(), startTime: fmt(new Date()), rows: [] };
+  persist(); busy = false; render();
+  showLast('idle', 'Phiên ' + ct + ' đã bắt đầu. Sẵn sàng quét.', '', null);
+  if (note) toast(note);
+  focusScan();
+}
+
+function endClick(){
+  if (!state.session || busy) return;
+  if (state.user.VaiTro === 'QuanLy'){
+    if (confirm('Kết thúc phiên ' + state.session.chungTu + ' với ' + state.session.rows.length + ' mã?')) closeSession(state.user.MaNhanVien);
+  } else {
+    $('#apMa').value = ''; $('#apErr').textContent = ''; $('#dlgApprove').showModal(); $('#apMa').focus();
+  }
+}
+async function approveAndClose(){
+  const ma = $('#apMa').value.trim();
+  if (!ma){ $('#apErr').textContent = 'Hãy nhập mã Quản lý.'; return; }
+  $('#apOk').disabled = true;
+  const r = await api('verifyManager', { ma });
+  $('#apOk').disabled = false;
+  if (!r.ok){ $('#apErr').textContent = r.error || 'Không duyệt được'; return; }
+  $('#dlgApprove').close();
+  closeSession(ma);
+}
+
+async function closeSession(approverMa){
+  const s = state.session; if (!s) return;
+  busy = true; render();
+  const approvedByOther = approverMa.toUpperCase() !== state.user.MaNhanVien.toUpperCase();
+  const rows = s.rows.map(r => Object.assign({}, r, {
+    note: [r.note, approvedByOther ? 'Quản lý duyệt đóng phiên: ' + approverMa : ''].filter(Boolean).join(' | ')
+  }));
+  const r = await api('closeSession', { chungTu: s.chungTu, rows, approverMa });
+  busy = false;
+  if (!r.ok){
+    render();
+    showLast('err', 'Chưa đồng bộ được lên Google Sheets: ' + (r.error || '') + '. Dữ liệu vẫn nằm trên máy, hãy thử lại.', '', null);
+    beep('err'); return;
+  }
+  exportExcel(s, rows);
+  state.session = null; persist(); render();
+  showLast('idle', 'Đã đóng phiên ' + s.chungTu + ' và tải file Excel. Có thể bắt đầu phiên mới.', '', null);
+  toast('Đã đồng bộ ' + rows.length + ' dòng lên NhatKyXuatHang.');
+}
+
+function exportExcel(s, rows){
+  const head = ['STT','ThoiGian','ChungTu','MaNhanVien','TenNhanVien','Barcode','MaPrefix','MaHang','Seri','GhiChu'];
+  const data = rows.map(r => ({ STT:r.stt, ThoiGian:r.time, ChungTu:s.chungTu, MaNhanVien:r.ma, TenNhanVien:r.ten,
+    Barcode:r.barcode, MaPrefix:r.prefix, MaHang:r.maHang, Seri:r.seri, GhiChu:r.note || '' }));
+  if (window.XLSX){
+    const ws = XLSX.utils.json_to_sheet(data, { header: head });
+    ws['!cols'] = [6,19,16,12,20,24,14,12,16,24].map(w => ({ wch:w }));
+    const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'NhatKyXuatHang');
+    XLSX.writeFile(wb, s.chungTu + '.xlsx');
+  } else {   // chưa tải được thư viện Excel (offline) -> xuất CSV mở được bằng Excel
+    const q = v => '"' + String(v == null ? '' : v).replace(/"/g,'""') + '"';
+    const csv = '\ufeff' + [head.join(',')].concat(data.map(o => head.map(h => q(o[h])).join(','))).join('\r\n');
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type:'text/csv;charset=utf-8' }));
+    a.download = s.chungTu + '.csv'; document.body.appendChild(a); a.click(); a.remove();
+  }
+}
+
+/* ---------------------------- Quét & tách barcode ---------------------------- */
+let chain = Promise.resolve();
+function enqueue(raw){ chain = chain.then(() => handleScan(raw)).catch(console.error); }
+
+async function handleScan(raw){
+  // Barcode có thể dính nhau, ngăn cách bằng ; , khoảng trắng hoặc ký tự lạ bất kỳ
+  const toks = String(raw).split(/[^A-Za-z0-9]+/).filter(Boolean);
+  for (const t of toks) await processBarcode(t);
+}
+
+// Ưu tiên MaPrefix dài hơn kiểm tra trước; phần còn lại phía sau là Seri
+function parseBarcode(bc){
+  const U = bc.toUpperCase();
+  const list = state.catalog.slice().sort((a, b) => b.MaPrefix.length - a.MaPrefix.length);
+  for (const c of list){
+    const p = String(c.MaPrefix || '').toUpperCase();
+    if (p && U.startsWith(p) && U.length > p.length)
+      return { c, prefix: bc.slice(0, p.length), seri: bc.slice(p.length) };
+  }
+  return null;
+}
+
+async function processBarcode(bc){
+  const s = state.session;
+  if (!s){ beep('warn'); showLast('warn', 'Chưa có phiên. Hãy bấm “Bắt Đầu Phiên Mới” trước khi quét.', bc, null); return; }
+  const key = bc.toUpperCase();
+
+  // Tình huống A: trùng trong cùng phiên -> BEEP + chặn
+  if (s.rows.some(r => r.barcode.toUpperCase() === key)){
+    beep('err'); showLast('err', 'TRÙNG trong phiên này. Không lưu.', bc, null); return;
+  }
+  // Mã chưa khai báo -> BEEP + chặn + nút Khai Báo Ngay
+  const p = parseBarcode(bc);
+  if (!p){
+    beep('warn'); state.pendingBc = bc;
+    showLast('warn', 'Mã chưa được khai báo trong danh mục. Không lưu.', bc, null);
+    $('#declBox').hidden = false; return;
+  }
+  // Tình huống C: chặn nếu nhân viên khác đã bắn mã này trong phiên đang mở
+  const cl = await api('claim', { ma: state.user.MaNhanVien, chungTu: s.chungTu, barcode: bc });
+  let note = '';
+  if (cl.ok && cl.dup){
+    beep('err');
+    showLast('err', `Mã đã được ${cl.byMa} quét trong phiên ${cl.byChungTu}. Không lưu.`, bc, null); return;
+  }
+  if (!cl.ok && cl.network) note = 'Quét offline, chưa kiểm tra trùng với nhân viên khác';
+  else if (!cl.ok){ beep('err'); showLast('err', 'Lỗi máy chủ: ' + (cl.error || ''), bc, null); return; }
+
+  // Tình huống B (khác phiên / khác ngày) vẫn được lưu bình thường
+  const row = {
+    stt: s.rows.length + 1, time: fmt(new Date()), barcode: bc, prefix: p.prefix, maHang: p.c.MaHang,
+    tenHang: p.c.TenHang || '', seri: p.seri, note, ma: state.user.MaNhanVien, ten: state.user.TenNhanVien
+  };
+  s.rows.push(row); persist(); render();
+  beep('ok'); showLast('ok', note ? 'Đã lưu (offline)' : 'Đã lưu', bc, row);
+}
+
+function showLast(kind, title, bc, row){
+  $('#last').className = 'last ' + kind;
+  $('#lastTitle').textContent = title;
+  $('#lastBc').innerHTML = row ? `<span class="pf">${esc(row.prefix)}</span><span>${esc(row.seri)}</span>` : esc(bc || '');
+  $('#lastMa').textContent = row ? row.maHang : '—';
+  $('#lastTen').textContent = row ? (row.tenHang || '—') : '—';
+  $('#lastSeri').textContent = row ? row.seri : '—';
+  $('#declBox').hidden = true;
+}
+
+/* ---------------------------- Khai báo mã mới ---------------------------- */
+function openDeclare(){
+  const bc = state.pendingBc; if (!bc) return;
+  const lens = state.catalog.map(c => c.MaPrefix.length);
+  const guess = lens.length ? lens.sort((a,b) => a-b)[Math.floor(lens.length/2)] : Math.ceil(bc.length/2);
+  const rg = $('#declRange'); rg.min = 1; rg.max = bc.length - 1; rg.value = Math.min(Math.max(guess,1), bc.length - 1);
+  $('#declMa').value = ''; $('#declTen').value = ''; $('#declErr').textContent = '';
+  updateDeclPreview(); $('#dlgDecl').showModal(); $('#declMa').focus();
+}
+function updateDeclPreview(){
+  const bc = state.pendingBc, n = Number($('#declRange').value);
+  $('#declLen').textContent = n + ' / ' + bc.length;
+  $('#declPreview').innerHTML = `<span class="pf">${esc(bc.slice(0,n))}</span><span class="sr">${esc(bc.slice(n))}</span>`;
+}
+async function saveDeclare(){
+  const bc = state.pendingBc, n = Number($('#declRange').value);
+  const prefix = bc.slice(0, n), maHang = $('#declMa').value.trim();
+  if (!maHang){ $('#declErr').textContent = 'Hãy nhập MaHang.'; return; }
+  if (state.catalog.some(c => c.MaPrefix.toUpperCase() === prefix.toUpperCase())){ $('#declErr').textContent = 'MaPrefix này đã có trong danh mục.'; return; }
+  $('#declSave').disabled = true;
+  const r = await api('addPrefix', { prefix, maHang, tenHang: $('#declTen').value.trim(), donViTinh: $('#declDvt').value.trim() });
+  $('#declSave').disabled = false;
+  if (!r.ok){ $('#declErr').textContent = r.error || 'Không lưu được'; return; }
+  state.catalog.push({ MaPrefix: prefix, MaHang: maHang, TenHang: $('#declTen').value.trim(), DonViTinh: $('#declDvt').value.trim() });
+  LS.set('bq_catalog', state.catalog);
+  $('#dlgDecl').close(); state.pendingBc = null;
+  toast('Đã khai báo ' + prefix + ' → ' + maHang);
+  enqueue(bc);       // quét lại mã vừa bị chặn
+}
+
+/* ---------------------------- Hiển thị danh sách ---------------------------- */
+function render(){
+  const s = state.session;
+  $('#ct').textContent = s ? s.chungTu : 'Chưa có phiên làm việc';
+  $('#btnStart').disabled = !!s || busy;     // khoá cứng suốt phiên
+  $('#btnEnd').disabled = !s || busy;
+  $('#scanInput').disabled = !s; $('#btnCam').disabled = !s;
+  const rows = s ? s.rows : [];
+  $('#count').textContent = rows.length;
+  $('#btnCopyAll').disabled = !rows.length;
+  $('#emptyMsg').hidden = rows.length > 0;
+  $('#tbody').innerHTML = rows.slice().reverse().map(r => {
+    const i = r.stt - 1;
+    return `<tr><td>${r.stt}</td><td>${esc(r.time.slice(11))}</td><td class="mono">${esc(r.barcode)}</td>` +
+      `<td class="mono pf">${esc(r.prefix)}</td><td><b>${esc(r.maHang)}</b></td><td>${esc(r.tenHang)}</td>` +
+      `<td class="mono">${esc(r.seri)}</td><td><button class="small" data-i="${i}">📋 Copy Seri</button></td></tr>`;
+  }).join('');
+  tick();
+}
+function tick(){
+  const s = state.session; if (!s){ $('#timer').textContent = 'Thời gian: 00:00:00'; return; }
+  const t = Math.floor((Date.now() - s.start) / 1000);
+  $('#timer').textContent = `Bắt đầu ${s.startTime.slice(11)} · Thời gian: ${pad(Math.floor(t/3600))}:${pad(Math.floor(t%3600/60))}:${pad(t%60)}`;
+}
+setInterval(tick, 1000);
+
+/* ---------------------------- Copy cho ERP ---------------------------- */
+async function copyText(t){
+  try{ await navigator.clipboard.writeText(t); return true; }
+  catch(e){
+    const ta = document.createElement('textarea'); ta.value = t; ta.style.cssText = 'position:fixed;opacity:0';
+    document.body.appendChild(ta); ta.select(); let ok = false;
+    try{ ok = document.execCommand('copy'); }catch(_){}
+    ta.remove(); return ok;
+  }
+}
+
+/* ---------------------------- Camera ---------------------------- */
+let cam = null, lastCam = { v:'', t:0 };
+function loadScript(src){ return new Promise((ok, ko) => { const s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = ko; document.head.appendChild(s); }); }
+async function openCam(){
+  if (!state.session) return;
+  $('#dlgCam').showModal();
+  try{
+    if (!window.Html5Qrcode) await loadScript('https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js');
+  }catch(e){ toast('Không tải được thư viện camera (cần mạng ở lần đầu).'); closeCam(); return; }
+  try{
+    cam = new Html5Qrcode('camBox', { verbose:false, experimentalFeatures:{ useBarCodeDetectorIfSupported:true } });
+    await cam.start({ facingMode:'environment' }, { fps:10, qrbox:{ width:260, height:160 } }, txt => {
+      const n = Date.now();
+      if (txt === lastCam.v && n - lastCam.t < 2500) return;   // tránh đọc lặp cùng một mã
+      lastCam = { v:txt, t:n }; enqueue(txt);
+    }, () => {});
+  }catch(e){ toast('Không mở được camera: ' + e); closeCam(); }
+}
+async function closeCam(){
+  try{ if (cam){ await cam.stop(); cam.clear(); } }catch(e){}
+  cam = null; if ($('#dlgCam').open) $('#dlgCam').close(); focusScan();
+}
+
+/* ---------------------------- Sự kiện ---------------------------- */
+function focusScan(){ if (window.matchMedia('(pointer:fine)').matches && !$('#scanInput').disabled) $('#scanInput').focus(); }
+
+$('#btnLogin').onclick = () => doLogin($('#loginMa').value);
+$('#loginMa').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(e.target.value); });
+$('#btnLogout').onclick = logout;
+$('#btnStart').onclick = startSession;
+$('#btnEnd').onclick = endClick;
+$('#scanForm').addEventListener('submit', e => { e.preventDefault(); const v = $('#scanInput').value; $('#scanInput').value = ''; if (v.trim()) enqueue(v); });
+$('#btnCam').onclick = openCam;
+$('#camClose').onclick = closeCam;
+$('#dlgCam').addEventListener('close', () => { if (cam) closeCam(); });
+$('#btnDecl').onclick = openDeclare;
+$('#declRange').oninput = updateDeclPreview;
+$('#declCancel').onclick = () => { $('#dlgDecl').close(); focusScan(); };
+$('#declSave').onclick = saveDeclare;
+$('#apCancel').onclick = () => $('#dlgApprove').close();
+$('#apOk').onclick = approveAndClose;
+$('#apMa').addEventListener('keydown', e => { if (e.key === 'Enter') approveAndClose(); });
+$('#btnCopyAll').onclick = async () => {
+  const s = state.session; if (!s || !s.rows.length) return;
+  const ok = await copyText(s.rows.map(r => r.seri).join('\n'));
+  toast(ok ? `Đã copy ${s.rows.length} seri (mỗi seri 1 dòng). Dán vào ERP bằng Ctrl+V.` : 'Không copy được, hãy thử lại.');
+};
+$('#tbody').addEventListener('click', async e => {
+  const b = e.target.closest('button[data-i]'); if (!b) return;
+  const r = state.session.rows[Number(b.dataset.i)];
+  const ok = await copyText(r.seri);
+  toast(ok ? 'Đã copy seri ' + r.seri : 'Không copy được, hãy thử lại.');
+});
+$('#btnSettings').onclick = () => { $('#setUrl').value = cfg.url || ''; $('#setKey').value = cfg.key || ''; $('#dlgSet').showModal(); };
+$('#setCancel').onclick = () => $('#dlgSet').close();
+$('#setSave').onclick = () => {
+  cfg = { url: $('#setUrl').value.trim(), key: $('#setKey').value.trim() }; LS.set('bq_cfg', cfg);
+  $('#dlgSet').close(); $('#demoHint').hidden = !!cfg.url; setNet(cfg.url ? null : null);
+  toast(cfg.url ? 'Đã lưu. Đăng nhập lại để kết nối Google Sheets.' : 'Đã chuyển sang chế độ thử.');
+  if (state.user) logoutSilent();
+};
+function logoutSilent(){ LS.del('bq_user'); state.user = null; state.session = LS.get('bq_session') ? null : null; $('#vApp').hidden = true; $('#vLogin').hidden = false; $('#who').hidden = true; $('#btnLogout').hidden = true; }
+
+// Giữ ô quét luôn sẵn sàng cho máy đọc barcode
+document.addEventListener('click', e => { if (!e.target.closest('button,input,dialog,a')) focusScan(); });
+window.addEventListener('beforeunload', e => { if (state.session && state.session.rows.length){ e.preventDefault(); e.returnValue = ''; } });
+
+/* ---------------------------- Khởi động ---------------------------- */
+(function init(){
+  $('#demoHint').hidden = !!cfg.url; setNet(null);
+  const u = LS.get('bq_user');
+  if (u){ state.user = u; state.catalog = LS.get('bq_catalog', []); enterApp(); }
+  else $('#loginMa').focus();
+})();
+</script>
 </body>
 </html>
