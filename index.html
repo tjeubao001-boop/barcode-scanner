@@ -4,7 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Camera Scanner Widget</title>
-  <script src="https://unpkg.com/html5-qrcode"></script>
+  <!-- Dùng CDN HTML5-QRCode bản mới nhất -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
   <style>
     body {
       margin: 0;
@@ -17,6 +18,7 @@
       justify-content: center;
       align-items: center;
       height: 100vh;
+      overflow: hidden;
     }
     #reader {
       width: 100%;
@@ -37,7 +39,7 @@
 <body>
 
   <div id="reader"></div>
-  <div id="statusText">Đang kết nối camera...</div>
+  <div id="statusText">Đang khởi tạo camera...</div>
 
   <script>
     let html5QrCode = null;
@@ -45,31 +47,38 @@
     function initCamera() {
       html5QrCode = new Html5Qrcode("reader");
 
-      // Cấu hình quét mã vạch tối ưu
+      // Khai báo rõ các chuẩn Barcode 1D thông dụng nhất trong kho vận (Code 128, Code 39, EAN, UPC)
       const config = {
-        fps: 25, // Tăng tốc độ đọc lên 25 khung hình/giây
-        qrbox: { width: 320, height: 160 }, // Khung chữ nhật nằm ngang phù hợp với tem mã vạch
-        aspectRatio: 1.0,
+        fps: 30, // Tăng tốc độ đọc khung hình lên tối đa
+        qrbox: { width: 320, height: 130 }, // Khung chữ nhật hẹp theo chiều ngang cho tem mã vạch
+        formatsToSupport: [
+          Html5QrcodeSupportedFormats.CODE_128,
+          Html5QrcodeSupportedFormats.CODE_39,
+          Html5QrcodeSupportedFormats.EAN_13,
+          Html5QrcodeSupportedFormats.EAN_8,
+          Html5QrcodeSupportedFormats.UPC_A,
+          Html5QrcodeSupportedFormats.UPC_E,
+          Html5QrcodeSupportedFormats.QR_CODE
+        ],
         experimentalFeatures: {
-          useBarCodeDetectorIfSupported: true // Kích hoạt bộ quét mã vạch phần cứng của máy
+          useBarCodeDetectorIfSupported: true // Tận dụng bộ giải mã phần cứng Android/iOS
         }
       };
 
-      // Tự động tìm Camera sau có độ phân giải cao để lấy nét tự động
+      // Yêu cầu Camera độ phân giải sắc nét
       const cameraConstraints = {
         facingMode: "environment",
-        width: { min: 640, ideal: 1280, max: 1920 },
-        height: { min: 480, ideal: 720, max: 1080 }
+        width: { min: 1280, ideal: 1920 },
+        height: { min: 720, ideal: 1080 }
       };
 
       html5QrCode.start(
         cameraConstraints,
         config,
         (decodedText) => {
-          // Báo thành công trên màn hình scanner
           document.getElementById('statusText').innerText = "✅ ĐÃ ĐỌC MÃ: " + decodedText;
 
-          // Gửi dữ liệu mã vạch về ứng dụng Google Apps Script
+          // Gửi dữ liệu về ứng dụng chính Apps Script
           if (window.opener) {
             window.opener.postMessage({ type: 'BARCODE_SCANNED', code: decodedText }, '*');
           }
@@ -78,12 +87,12 @@
           }
         },
         (errorMessage) => {
-          // Đang trong tiến trình dò mã...
+          // Đang rà soát mã vạch...
         }
       ).then(() => {
-        document.getElementById('statusText').innerText = "🔍 Hãy đưa mã vạch vào giữa ô chữ nhật...";
+        document.getElementById('statusText').innerText = "🔍 Đưa mã vạch vào khung hình...";
       }).catch(err => {
-        document.getElementById('statusText').innerText = "❌ Không mở được camera: " + err;
+        document.getElementById('statusText').innerText = "❌ Lỗi mở camera: " + err;
       });
     }
 
